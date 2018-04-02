@@ -40,15 +40,15 @@ class FromCSVEnvSrc(object):
   QuandlAuthToken = "73mzBzhJyDhXL-KDLew8"  # not necessary, but can be used if desired
   Name = "TSE/9994"  # https://www.quandl.com/search (use 'Free' filter)
 
-  def __init__(self, days=252, name=Name, auth=QuandlAuthToken, scale=True):
+  def __init__(self, days, name=Name, auth=QuandlAuthToken, scale=True):
     self.name = name
     self.auth = auth
-    self.days = days + 1
-    log.info('getting data for %s from quandl...', QuandlEnvSrc.Name)
+    self.days = days #len(open(r"/home/rocc78/Documents/EURUSD240.csv", 'rU').readlines())
+    log.info('getting data for %s from quandl...', FromCSVEnvSrc.Name)
     df  = pd.read_csv('/home/rocc78/Documents/EURUSD240.csv',index_col=[0,1])
-    log.info('got data for %s from quandl...', QuandlEnvSrc.Name)
+    log.info('got data for %s from quandl...', FromCSVEnvSrc.Name)
 
-    df = df[~np.isnan(df.Volume)]
+    df = df[~np.isnan(df.volume)]
     # we calculate returns and percentiles, then kill nans
 
 
@@ -64,7 +64,7 @@ class FromCSVEnvSrc(object):
 
   def reset(self):
     # we want contiguous data
-    self.idx = np.random.randint(low=0, high=len(self.data.index) - self.days)
+    self.idx = np.random.randint(low=0, high=self.days)
     self.step = 0
 
   def _step(self):
@@ -74,57 +74,6 @@ class FromCSVEnvSrc(object):
     done = self.step >= self.days
     return obs, done
 
-class QuandlEnvSrc(object):
-  ''' 
-  Quandl-based implementation of a TradingEnv's data source.
-  
-  Pulls data from Quandl, preps for use by TradingEnv and then 
-  acts as data provider for each new episode.
-  '''
-
-  MinPercentileDays = 100 
-  QuandlAuthToken = "73mzBzhJyDhXL-KDLew8"  # not necessary, but can be used if desired
-  Name = "TSE/9994" # https://www.quandl.com/search (use 'Free' filter)
-
-  def __init__(self, days=252, name=Name, auth=QuandlAuthToken, scale=True ):
-    self.name = name
-    self.auth = auth
-    self.days = days+1
-    log.info('getting data for %s from quandl...',QuandlEnvSrc.Name)
-    df = quandl.get(self.name) if self.auth=='' else quandl.get(self.name, authtoken=self.auth)
-    log.info('got data for %s from quandl...',QuandlEnvSrc.Name)
-    
-    df = df[ ~np.isnan(df.Volume)][['Close','Volume']]
-    # we calculate returns and percentiles, then kill nans
-    df = df[['Close','Volume']]   
-    df.Volume.replace(0,1,inplace=True) # days shouldn't have zero volume..
-    df['Return'] = (df.Close-df.Close.shift())/df.Close.shift()
-    pctrank = lambda x: pd.Series(x).rank(pct=True).iloc[-1]
-    df['ClosePctl'] = df.Close.expanding(self.MinPercentileDays).apply(pctrank)
-    df['VolumePctl'] = df.Volume.expanding(self.MinPercentileDays).apply(pctrank)
-    df.dropna(axis=0,inplace=True)
-    R = df.Return
-    if scale:
-      mean_values = df.mean(axis=0)
-      std_values = df.std(axis=0)
-      df = (df - np.array(mean_values))/ np.array(std_values)
-    df['Return'] = R # we don't want our returns scaled
-    self.min_values = df.min(axis=0)
-    self.max_values = df.max(axis=0)
-    self.data = df
-    self.step = 0
-    
-  def reset(self):
-    # we want contiguous data
-    self.idx = np.random.randint( low = 0, high=len(self.data.index)-self.days )
-    self.step = 0
-
-  def _step(self):    
-    obs = self.data.iloc[self.idx].as_matrix()
-    self.idx += 1
-    self.step += 1
-    done = self.step >= self.days
-    return obs,done
 
 class TradingSim(object) :
   """ Implements core trading simulator for single-instrument univ """
@@ -230,8 +179,8 @@ class TradingEnv(gym.Env):
   metadata = {'render.modes': ['human']}
 
   def __init__(self):
-    self.days = 252
-    self.src = QuandlEnvSrc(days=self.days)
+    self.days = len(open(r"/home/rocc78/Documents/EURUSD240.csv", 'rU').readlines())
+    self.src = FromCSVEnvSrc(days=self.days)
     self.sim = TradingSim(steps=self.days, trading_cost_bps=1e-3,
                           time_cost_bps=1e-4)
     self.action_space = spaces.Discrete( 3 )
@@ -303,3 +252,12 @@ class TradingEnv(gym.Env):
           alldf = df if alldf is None else pd.concat([alldf,df], axis=0)
             
     return alldf
+
+
+if __name__ == "__main__":
+
+    showdata = TradingEnv()
+
+    print(showdata.days)
+    print(showdata.src.min_values)
+    print(showdata.src.max_values)
