@@ -97,6 +97,7 @@ class PolicyGradient(object) :
                     model_dir = '/tmp/pgmodel/', log_freq=10 ) :
 
         # initialize variables and load model
+        #训练函数，导入存储好的模型
         init_op = tf.global_variables_initializer()
         self._sess.run(init_op)
         if load_model:
@@ -163,7 +164,7 @@ class PolicyGradient(object) :
                              running_reward, simrors[episode],mktrors[episode], simrors[episode]-mktrors[episode])
                     save_path = self._saver.save(self._sess, model_dir+'model.ckpt',
                                                  global_step=episode+1)
-                    if episode > 100:
+                    if episode > 100:             #100次模拟后，判断是否victory
                         vict = pd.DataFrame( { 'sim': simrors[episode-100:episode],
                                                'mkt': mktrors[episode-100:episode] } )
                         vict['net'] = vict.sim - vict.mkt

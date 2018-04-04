@@ -21,7 +21,7 @@ sess = tf.InteractiveSession()
 pg = policy_gradient.PolicyGradient(sess, obs_dim=5, num_actions=3, learning_rate=1e-2 )
 
 # train model, loading if possible
-alldf,summrzed = pg.train_model( env,episodes=301, log_freq=100) #, load_model=True)
+alldf,summrzed = pg.train_model( env,episodes=3001, log_freq=100) #, load_model=True)
 #print alldf
 pd.DataFrame(summrzed).expanding().mean().plot()
 input("Press Enter to continue...")

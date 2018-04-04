@@ -259,5 +259,6 @@ if __name__ == "__main__":
     showdata = TradingEnv()
 
     print(showdata.days)
-    print(showdata.src.min_values)
+    print("xxx",showdata.sim.to_df())
     print(showdata.src.max_values)
+    print(showdata.action_space)
