@@ -30,10 +30,7 @@ def _prices2returns(prices):
 
 class FromCSVEnvSrc(object):
   '''
-  Quandl-based implementation of a TradingEnv's data source.
 
-  Pulls data from Quandl, preps for use by TradingEnv and then
-  acts as data provider for each new episode.
   '''
 
   MinPercentileDays = 100
@@ -93,7 +90,16 @@ class TradingSim(object) :
     self.costs            = np.zeros(self.steps)
     self.trades           = np.zeros(self.steps)
     self.mkt_retrns       = np.zeros(self.steps)
-    
+    self.profit           = np.zeros(self.steps)
+
+    self.days = len(open(r"/home/rocc78/Documents/EURUSD240.csv", 'rU').readlines())
+
+    self.src = FromCSVEnvSrc(days=self.days)
+    B_cols = ['cangwei','action','open_price','close_price','profit']
+
+
+    B = pd.DataFrame(columns = B_cols)
+
   def reset(self):
     self.step = 0
     self.actions.fill(0)
@@ -104,6 +110,8 @@ class TradingSim(object) :
     self.costs.fill(0)
     self.trades.fill(0)
     self.mkt_retrns.fill(0)
+
+    B = B.drop(B.index)
     
   def _step(self, action, retrn ):
     """ Given an action and return for prior period, calculates costs, navs,
@@ -112,6 +120,9 @@ class TradingSim(object) :
     bod_posn = 0.0 if self.step == 0 else self.posns[self.step-1]
     bod_nav  = 1.0 if self.step == 0 else self.navs[self.step-1]
     mkt_nav  = 1.0 if self.step == 0 else self.mkt_nav[self.step-1]
+
+    profit = 0 if self.step == 0 else self.profit[self.step-1]
+
 
     self.mkt_retrns[self.step] = retrn
     self.actions[self.step] = action
@@ -124,9 +135,46 @@ class TradingSim(object) :
     reward = ( (bod_posn * retrn) - self.costs[self.step] )
     self.strat_retrns[self.step] = reward
 
+
+
     if self.step != 0 :
-      self.navs[self.step] =  bod_nav * (1 + self.strat_retrns[self.step-1])
-      self.mkt_nav[self.step] =  mkt_nav * (1 + self.mkt_retrns[self.step-1])
+
+        lots = 0.1
+
+
+
+        if self.actions[self.step] == 'buy':
+
+            buy_cangwei = buy_cangwei + 1
+            open_price = self.src.data.close
+        elif self.actions[self.step] == 'sell':
+            open_price = self.src.data.close
+            sell_cangwei = sell_cangwei + 1
+        elif self.actions[self.step] == 'wait':
+            pass
+
+        elif self.actions[self.step] == 'close_buy':
+            close_price = self.src.data.close
+            #self.profit[self.step] = (close_price - open_price) * 10000 * lots
+            buy_cangwei = 0
+        elif self.actions[self.step] == 'close_sell':
+            close_price = self.src.data.close
+            #self.profit[self.step] = (open_price - close_price) * 10000 * lots
+            sell_cangwei = 0
+        else:
+            pass
+
+
+        if profit > 0:
+            reward = reward + 1
+            #balance = balance + profit
+        else:
+            #balance = balance + profit
+        #if balance > 20000:
+            reward = reward + 1000
+
+        self.navs[self.step] =  bod_nav * (1 + self.strat_retrns[self.step-1])
+        self.mkt_nav[self.step] =  mkt_nav * (1 + self.mkt_retrns[self.step-1])
     
     info = { 'reward': reward, 'nav':self.navs[self.step], 'costs':self.costs[self.step] }
 
@@ -257,8 +305,6 @@ class TradingEnv(gym.Env):
 if __name__ == "__main__":
 
     showdata = TradingEnv()
+    #showdata1 = FromCSVEnvSrc(days=)
 
-    print(showdata.days)
-    print("xxx",showdata.sim.to_df())
-    print(showdata.src.max_values)
-    print(showdata.action_space)
+    print(showdata.sim.B)
