@@ -98,7 +98,7 @@ class TradingSim(object) :
     B_cols = ['cangwei','action','open_price','close_price','profit']
 
 
-    B = pd.DataFrame(columns = B_cols)
+    self.B = pd.DataFrame(columns = B_cols)
 
   def reset(self):
     self.step = 0
@@ -111,7 +111,7 @@ class TradingSim(object) :
     self.trades.fill(0)
     self.mkt_retrns.fill(0)
 
-    B = B.drop(B.index)
+    self.B = self.B.drop(self.B.index)
     
   def _step(self, action, retrn ):
     """ Given an action and return for prior period, calculates costs, navs,
@@ -140,27 +140,85 @@ class TradingSim(object) :
     if self.step != 0 :
 
         lots = 0.1
+        ifclose = False
+
 
 
 
         if self.actions[self.step] == 'buy':
 
-            buy_cangwei = buy_cangwei + 1
-            open_price = self.src.data.close
-        elif self.actions[self.step] == 'sell':
-            open_price = self.src.data.close
-            sell_cangwei = sell_cangwei + 1
-        elif self.actions[self.step] == 'wait':
-            pass
+            if self.B.iloc[:,0].size == 0:          #如果表里行数为0，说明没有开仓，那么开仓。
+                df2 = pd.DataFrame({'cangwei': 1,
+                                    'action': self.actions[self.step],
+                                    'open_price': self.src.data.close[self.step],
+                                    'close_price': 0,
+                                    'profit': 0
+                                    },  index=[0])
+                self.B.append(df2,ignore_index=True)
+                ifclose = False
 
-        elif self.actions[self.step] == 'close_buy':
-            close_price = self.src.data.close
-            #self.profit[self.step] = (close_price - open_price) * 10000 * lots
-            buy_cangwei = 0
-        elif self.actions[self.step] == 'close_sell':
-            close_price = self.src.data.close
-            #self.profit[self.step] = (open_price - close_price) * 10000 * lots
-            sell_cangwei = 0
+            else:   #如果行数不为0，说明已经有开仓，那么查找买卖单。 有未平卖单，平仓，没有未平卖单，开新仓。
+                kaicangshu = self.B.iloc[:,0].size
+                for i in range(kaicangshu):
+                    if self.B.ix[kaicangshu].action == 2: #如果有卖单
+                        if self.B.ix[kaicangshu].close == 0: #如果有未平的单子。
+                            self.B.ix[kaicangshu].close = self.src.data.close[self.step]
+                            self.B.ix[kaicangshu].profit = (self.B.ix[kaicangshu].open_price - self.B.ix[kaicangshu].close_price) * 10000 * lots
+
+                        else: #如果没有未平的
+                            pass
+                    else:
+                        pass
+                ifclose = True
+
+            if ifclose == True:
+                df2 = pd.DataFrame({'cangwei': 1,
+                                    'action': self.actions[self.step],
+                                    'open_price': self.src.data.close[self.step],
+                                    'close_price': 0,
+                                    'profit': 0
+                                    },  index=[0])
+                self.B.append(df2,ignore_index=True)
+                ifclose = False
+
+
+
+        elif self.actions[self.step] == 'sell':
+            if self.B.iloc[:, 0].size == 0:  # 如果表里行数为0，说明没有开仓，那么开仓。
+                df2 = pd.DataFrame({'cangwei': 1,
+                                    'action': 2,
+                                    'open_price': self.src.data.close[self.step],
+                                    'close_price': 0,
+                                    'profit': 0
+                                    }, index=[0])
+                self.B.append(df2, ignore_index=True)
+                ifclose = False
+
+            else:  # 如果行数不为0，说明已经有开仓，那么查找买卖单。 有未平卖单，平仓，没有未平卖单，开新仓。
+                kaicangshu = self.B.iloc[:, 0].size
+                for i in range(kaicangshu):
+                    if self.B.ix[kaicangshu].action == 1:  # 如果有卖单
+                        if self.B.ix[kaicangshu].close == 0:  # 如果有未平的单子。
+                            self.B.ix[kaicangshu].close = self.src.data.close
+                            self.B.ix[kaicangshu].profit = (self.B.ix[kaicangshu].close_price - self.B.ix[kaicangshu].open_price ) * 10000 * lots
+
+                        else:  # 如果没有未平的
+                            pass
+                    else:
+                        pass
+                ifclose = True
+
+            if ifclose == True:
+                df2 = pd.DataFrame({'cangwei': 1,
+                                    'action': self.actions[self.step],
+                                    'open_price': self.src.data.close,
+                                    'close_price': 0,
+                                    'profit': 0
+                                    }, index=[0])
+                self.B.append(df2, ignore_index=True)
+                ifclose = False
+
+
         else:
             pass
 
@@ -197,6 +255,9 @@ class TradingSim(object) :
                           'trade':  self.trades },# eod trade
                          columns=cols)
     return df
+
+  def to_df1(self):
+
 
 class TradingEnv(gym.Env):
   """This gym implements a simple trading environment for reinforcement learning.
