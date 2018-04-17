@@ -151,7 +151,7 @@ class PolicyGradient(object) :
                 xs,rs,ys = [],[],[] # reset game history
                 df = env.env.sim.to_df()
                 #pdb.set_trace()
-                simrors[episode]=df.bod_nav.values[-1]-1 # compound returns
+                simrors[episode]=df.total_profit[-1] # compound returns
                 mktrors[episode]=df.mkt_nav.values[-1]-1
 
                 alldf = df if alldf is None else pd.concat([alldf,df], axis=0)
@@ -168,7 +168,7 @@ class PolicyGradient(object) :
                         vict = pd.DataFrame( { 'sim': simrors[episode-100:episode],
                                                'mkt': mktrors[episode-100:episode] } )
                         vict['net'] = vict.sim - vict.mkt
-                        if vict.net.mean() > 0.0:
+                        if vict.sim.mean() > 10000.0:
                             victory = True
                             log.info('Congratulations, Warren Buffet!  You won the trading game.')
                     #print("Model saved in file: {}".format(save_path))

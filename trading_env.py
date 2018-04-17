@@ -90,7 +90,9 @@ class TradingSim(object) :
     self.costs            = np.zeros(self.steps)
     self.trades           = np.zeros(self.steps)
     self.mkt_retrns       = np.zeros(self.steps)
+
     self.profit           = np.zeros(self.steps)
+    self.total_profit     = np.zeros(self.steps)
 
     self.days = len(open(r"/home/rocc78/Documents/EURUSD240.csv", 'rU').readlines())
 
@@ -154,7 +156,7 @@ class TradingSim(object) :
                                     'close_price': 0,
                                     'profit': 0
                                     },  index=[0])
-                self.B.append(df2,ignore_index=True)
+                self.B = self.B.append(df2,ignore_index=True)
                 ifclose = False
 
             else:   #如果行数不为0，说明已经有开仓，那么查找买卖单。 有未平卖单，平仓，没有未平卖单，开新仓。
@@ -178,7 +180,7 @@ class TradingSim(object) :
                                     'close_price': 0,
                                     'profit': 0
                                     },  index=[0])
-                self.B.append(df2,ignore_index=True)
+                self.B = self.B.append(df2,ignore_index=True)
                 ifclose = False
 
 
@@ -191,7 +193,7 @@ class TradingSim(object) :
                                     'close_price': 0,
                                     'profit': 0
                                     }, index=[0])
-                self.B.append(df2, ignore_index=True)
+                self.B = self.B.append(df2, ignore_index=True)
                 ifclose = False
 
             else:  # 如果行数不为0，说明已经有开仓，那么查找买卖单。 有未平卖单，平仓，没有未平卖单，开新仓。
@@ -199,7 +201,7 @@ class TradingSim(object) :
                 for i in range(kaicangshu):
                     if self.B.ix[kaicangshu].action == 1:  # 如果有卖单
                         if self.B.ix[kaicangshu].close == 0:  # 如果有未平的单子。
-                            self.B.ix[kaicangshu].close = self.src.data.close
+                            self.B.ix[kaicangshu].close = self.src.data.close[self.step]
                             self.B.ix[kaicangshu].profit = (self.B.ix[kaicangshu].close_price - self.B.ix[kaicangshu].open_price ) * 10000 * lots
 
                         else:  # 如果没有未平的
@@ -211,16 +213,21 @@ class TradingSim(object) :
             if ifclose == True:
                 df2 = pd.DataFrame({'cangwei': 1,
                                     'action': self.actions[self.step],
-                                    'open_price': self.src.data.close,
+                                    'open_price': self.src.data.close[self.step],
                                     'close_price': 0,
                                     'profit': 0
                                     }, index=[0])
-                self.B.append(df2, ignore_index=True)
+                self.B = self.B.append(df2, ignore_index=True)
                 ifclose = False
 
 
         else:
             pass
+
+
+        P_line= self.B.apply(lambda x: x.sum())
+
+        self.total_profit = P_line.profit
 
 
         if profit > 0:
@@ -241,22 +248,36 @@ class TradingSim(object) :
 
   def to_df(self):
     """returns internal state in new dataframe """
-    cols = ['action', 'bod_nav', 'mkt_nav','mkt_return','sim_return',
-            'position','costs', 'trade' ]
-    rets = _prices2returns(self.navs)
-    #pdb.set_trace()
-    df = pd.DataFrame( {'action':     self.actions, # today's action (from agent)
-                          'bod_nav':    self.navs,    # BOD Net Asset Value (NAV)
-                          'mkt_nav':  self.mkt_nav, 
-                          'mkt_return': self.mkt_retrns,
-                          'sim_return': self.strat_retrns,
-                          'position':   self.posns,   # EOD position
-                          'costs':  self.costs,   # eod costs
-                          'trade':  self.trades },# eod trade
-                         columns=cols)
+    # cols = ['action', 'bod_nav', 'mkt_nav','mkt_return','sim_return',
+    #         'position','costs', 'trade' ]
+    # rets = _prices2returns(self.navs)
+    # #pdb.set_trace()
+    # # df = pd.DataFrame( {'action':     self.actions, # today's action (from agent)
+    # #                       'bod_nav':    self.navs,    # BOD Net Asset Value (NAV)
+    # #                       'mkt_nav':  self.mkt_nav,
+    # #                       'mkt_return': self.mkt_retrns,
+    # #                       'sim_return': self.strat_retrns,
+    # #                       'position':   self.posns,   # EOD position
+    # #                       'costs':  self.costs,   # eod costs
+    # #                       'trade':  self.trades },# eod trade
+    # #                      columns=cols)
+    C_cols = ['action', 'open_price', 'close_price', 'total_profit']
+
+    df = pd.DataFrame({'action': self.actions,
+                        'open_price': self.open_price,
+                        'close_price': self.close_price,
+                        'total_profit': self.total_profit}, columns=C_cols)
     return df
 
   def to_df1(self):
+      C_cols = ['action', 'open_price', 'close_price', 'total_profit']
+
+      df1 = pd.DataFrame({'action': self.actions,
+                          'open_price': self.open_price,
+                          'close_price': self.close_price,
+                          'total_profit':self.total_profit},columns=C_cols)
+
+      return df1
 
 
 class TradingEnv(gym.Env):
@@ -336,7 +357,7 @@ class TradingEnv(gym.Env):
 
       observation, reward, done, info = self.step(action)
 
-    return self.sim.to_df() if return_df else None
+    return self.sim.to_df1() if return_df else None
       
   def run_strats( self, strategy, episodes=1, write_log=True, return_df=True):
     """ run provided strategy the specified # of times, possibly
@@ -368,4 +389,4 @@ if __name__ == "__main__":
     showdata = TradingEnv()
     #showdata1 = FromCSVEnvSrc(days=)
 
-    print(showdata.sim.B)
+    print(showdata.sim.to_df())
