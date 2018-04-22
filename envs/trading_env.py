@@ -93,6 +93,8 @@ class TradingSim(object) :
 
     self.profit           = np.zeros(self.steps)
     self.total_profit     = np.zeros(self.steps)
+    self.open_price       = np.zeros(self.steps)
+    self.close_price      = np.zeros(self.steps)
 
     self.days = len(open(r"/home/rocc78/Documents/EURUSD240.csv", 'rU').readlines())
 
@@ -112,6 +114,11 @@ class TradingSim(object) :
     self.costs.fill(0)
     self.trades.fill(0)
     self.mkt_retrns.fill(0)
+
+    self.open_price.fill(0)
+    self.close_price.fill(0)
+    self.profit.fill(0)
+    self.total_profit.fill(0)
 
     self.B = self.B.drop(self.B.index)
     
@@ -147,7 +154,9 @@ class TradingSim(object) :
 
 
 
-        if self.actions[self.step] == 'buy':
+        if self.actions[self.step] == 1:
+            # print( self.actions[self.step])
+            # print(self.src.data.close[self.step])
 
             if self.B.iloc[:,0].size == 0:          #如果表里行数为0，说明没有开仓，那么开仓。
                 df2 = pd.DataFrame({'cangwei': 1,
@@ -159,13 +168,16 @@ class TradingSim(object) :
                 self.B = self.B.append(df2,ignore_index=True)
                 ifclose = False
 
+
+
             else:   #如果行数不为0，说明已经有开仓，那么查找买卖单。 有未平卖单，平仓，没有未平卖单，开新仓。
                 kaicangshu = self.B.iloc[:,0].size
+                print("+++++++++", kaicangshu)
                 for i in range(kaicangshu):
-                    if self.B.ix[kaicangshu].action == 2: #如果有卖单
-                        if self.B.ix[kaicangshu].close == 0: #如果有未平的单子。
-                            self.B.ix[kaicangshu].close = self.src.data.close[self.step]
-                            self.B.ix[kaicangshu].profit = (self.B.ix[kaicangshu].open_price - self.B.ix[kaicangshu].close_price) * 10000 * lots
+                    if self.B.ix[i].action == 2: #如果有卖单
+                        if self.B.ix[i].close_price == 0: #如果有未平的单子。
+                            self.B.ix[i].close_price = self.src.data.close[self.step]
+                            self.B.ix[i].profit = (self.B.ix[i].open_price - self.B.ix[i].close_price) * 10000 * lots
 
                         else: #如果没有未平的
                             pass
@@ -185,7 +197,7 @@ class TradingSim(object) :
 
 
 
-        elif self.actions[self.step] == 'sell':
+        elif self.actions[self.step] == 2:
             if self.B.iloc[:, 0].size == 0:  # 如果表里行数为0，说明没有开仓，那么开仓。
                 df2 = pd.DataFrame({'cangwei': 1,
                                     'action': 2,
@@ -198,11 +210,12 @@ class TradingSim(object) :
 
             else:  # 如果行数不为0，说明已经有开仓，那么查找买卖单。 有未平卖单，平仓，没有未平卖单，开新仓。
                 kaicangshu = self.B.iloc[:, 0].size
+                print("+++++++++", kaicangshu)
                 for i in range(kaicangshu):
-                    if self.B.ix[kaicangshu].action == 1:  # 如果有卖单
-                        if self.B.ix[kaicangshu].close == 0:  # 如果有未平的单子。
-                            self.B.ix[kaicangshu].close = self.src.data.close[self.step]
-                            self.B.ix[kaicangshu].profit = (self.B.ix[kaicangshu].close_price - self.B.ix[kaicangshu].open_price ) * 10000 * lots
+                    if self.B.ix[i].action == 1:  # 如果有卖单
+                        if self.B.ix[i].close_price == 0:  # 如果有未平的单子。
+                            self.B.ix[i].close_price = self.src.data.close[self.step]
+                            self.B.ix[i].profit = (self.B.ix[i].close_price - self.B.ix[i].open_price ) * 10000 * lots
 
                         else:  # 如果没有未平的
                             pass
@@ -220,30 +233,36 @@ class TradingSim(object) :
                 self.B = self.B.append(df2, ignore_index=True)
                 ifclose = False
 
-
-        else:
-            pass
-
-
-        P_line= self.B.apply(lambda x: x.sum())
-
-        self.total_profit = P_line.profit
+        print(self.B)
+        self.B.ix[0].close_price = 2.2222
+        print(self.B.ix[0].close_price)
 
 
-        if profit > 0:
-            reward = reward + 1
-            #balance = balance + profit
-        else:
-            #balance = balance + profit
-        #if balance > 20000:
-            reward = reward + 1000
-
-        self.navs[self.step] =  bod_nav * (1 + self.strat_retrns[self.step-1])
-        self.mkt_nav[self.step] =  mkt_nav * (1 + self.mkt_retrns[self.step-1])
-    
+    #
+    #
+    #     else:
+    #         pass
+    #
+    #
+    #     P_line= self.B.apply(lambda x: x.sum())
+    #
+    #     self.total_profit = P_line.profit
+    #
+    #
+    #     if profit > 0:
+    #         reward = reward + 1
+    #         #balance = balance + profit
+    #     else:
+    #         #balance = balance + profit
+    #     #if balance > 20000:
+    #         reward = reward + 1000
+    #
+    #     self.navs[self.step] =  bod_nav * (1 + self.strat_retrns[self.step-1])
+    #     self.mkt_nav[self.step] =  mkt_nav * (1 + self.mkt_retrns[self.step-1])
+    #
     info = { 'reward': reward, 'nav':self.navs[self.step], 'costs':self.costs[self.step] }
 
-    self.step += 1      
+    self.step += 1
     return reward, info
 
   def to_df(self):
@@ -389,4 +408,4 @@ if __name__ == "__main__":
     showdata = TradingEnv()
     #showdata1 = FromCSVEnvSrc(days=)
 
-    print(showdata.sim.to_df())
+    print(showdata.sim.B)

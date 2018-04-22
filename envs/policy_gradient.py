@@ -14,9 +14,9 @@ import pdb
 import logging
 import os.path
 import pandas as pd
-import gym_trading
+import LML
 
-import trading_env
+import LML.envs.trading_env
 
 logging.basicConfig()
 log = logging.getLogger(__name__)
@@ -149,9 +149,9 @@ class PolicyGradient(object) :
                 epr = np.vstack(rs)
                 epy = np.vstack(ys)
                 xs,rs,ys = [],[],[] # reset game history
-                df = env.env.sim.to_df()
+                df = env.env.sim.to_df1()
                 #pdb.set_trace()
-                simrors[episode]=df.total_profit[-1] # compound returns
+                simrors[episode]=df.profit[-1] # compound returns
                 mktrors[episode]=df.mkt_nav.values[-1]-1
 
                 alldf = df if alldf is None else pd.concat([alldf,df], axis=0)
