@@ -14,7 +14,9 @@ print(B)
 #B = B.drop(B.index)
 c = B.apply(lambda x: x.sum())
 
+B.ix[0].close_price = 2.2222
 #print(B.append(df2,ignore_index=True))
 
 # print(B.loc[B.index[1],'cangwei'])
-print(c.profit)
+B = B.drop(B.index)
+print("+++",B)

@@ -151,8 +151,11 @@ class PolicyGradient(object) :
                 xs,rs,ys = [],[],[] # reset game history
                 df = env.env.sim.to_df1()
                 #pdb.set_trace()
-                simrors[episode]=df.profit[-1] # compound returns
-                mktrors[episode]=df.mkt_nav.values[-1]-1
+                print('xxxxxbbbbb = ', df.total_profit)
+                simrors[episode]=df.total_profit.values[-1]-1 # compound returns
+                # mktrors[episode]=df.mkt_nav.values[-1]-1
+
+
 
                 alldf = df if alldf is None else pd.concat([alldf,df], axis=0)
                 
